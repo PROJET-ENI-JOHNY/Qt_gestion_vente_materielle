@@ -1,0 +1,49 @@
+<RCC>
+    <qresource prefix="/">
+        <file>image/Ajouter.png</file>
+        <file>image/AjouterCli.png</file>
+        <file>image/Annuler.png</file>
+        <file>image/AnnulerRecherche.png</file>
+        <file>image/Clients.png</file>
+        <file>image/Editer.png</file>
+        <file>image/enrengistrer.png</file>
+        <file>image/Facture.png</file>
+        <file>image/FontAwesome_f02f(3)_1024.png</file>
+        <file>image/FontAwesome_f015(4)_1024.png</file>
+        <file>image/FontAwesome_f021(0)_1024.png</file>
+        <file>image/FontAwesome_f067(0)_64.png</file>
+        <file>image/FontAwesome_f108(0)_1024.png</file>
+        <file>image/home.png</file>
+        <file>image/icomoon_e61e(0)_1024.png</file>
+        <file>image/Iconic_2192(0)_64.png</file>
+        <file>image/IMAGE.png</file>
+        <file>image/linecons_e003(1)_1024.png</file>
+        <file>image/linecons_e011(2)_1024.png</file>
+        <file>image/logo.ico</file>
+        <file>image/Material Icons_e0ba(2)_1024.png</file>
+        <file>image/Material Icons_e8ad(1)_1024.png</file>
+        <file>image/Material Icons_e161(0)_64.png</file>
+        <file>image/Materiel.png</file>
+        <file>image/Nouveau.png</file>
+        <file>image/Nouveau2.png</file>
+        <file>image/Ok.png</file>
+        <file>image/Recherche.png</file>
+        <file>image/Supprimer.png</file>
+        <file>image/vente.png</file>
+        <file>image/Entypo_e765(1)_512.png</file>
+        <file>image/Entypo_e766(0)_512.png</file>
+        <file>image/Material Icons_e332(1)_512.png</file>
+        <file>image/Material Icons_e415(0)_512.png</file>
+        <file>image/Entypo_d83d(0)_512.png</file>
+        <file>image/generer en pdf.png</file>
+        <file>image/FontAwesome_f00d(0)_512.png</file>
+        <file>image/Iconic_2605(0)_512.png</file>
+        <file>image/Iconic_2605(0)_1024.png</file>
+        <file>image/octicons_f0b6(0)_1024.png</file>
+        <file>image/FontAwesome_f005(0)_512.png</file>
+        <file>image/FontAwesome_f005(0)_32.png</file>
+        <file>image/FontAwesome_f005(0)_48.png</file>
+        <file>image/themify_e60d(0)_512.png</file>
+        <file>image/themify_e611(0)_512.png</file>
+    </qresource>
+</RCC>

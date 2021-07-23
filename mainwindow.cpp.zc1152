@@ -1,0 +1,945 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+#include "QTableWidgetItem"
+#include "QMessageBox"
+#include <QSystemTrayIcon>
+#include <QtDebug>
+
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+    initialiser();
+    initialiserCli();
+    initialiserMateriel();
+    AfficherCli();
+    AfficherMateriel();
+    RemplireTableauCommande();
+    AfficherTousLesChiffresDAffaireDeChaqueClients();
+    initialiserClientsNouveau();
+    initialiserRadioBottonRecherche();
+    LesCodeAutomatique();
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+void MainWindow::initialiserCli()
+{
+    ui->EnrengistrerClient->setVisible(false);
+    ui->NumeroEdit->setReadOnly(true);
+    ui->AjouterClient->setVisible(true);
+    //A propos de clients
+    ui->EditerClient->setEnabled(false);
+    ui->SupprimerClients->setEnabled(false);
+    //A propos de Materiel
+    ui->EditerMateriel->setEnabled(false);
+    ui->SupprimerMateriel->setEnabled(false);
+    //A propos de Achat
+    ui->EditerCommande->setEnabled(false);
+    ui->SuprimerComande->setEnabled(false);
+    ui->EnrengistrerCommandeEditer->setEnabled(false);
+    ui->dateEdit->setDate(QDate::currentDate());
+    qDebug()<<QDate::currentDate();
+    // initialisation pour le Commande
+    /*
+    Affaire Aff;
+    Aff.vola=0;
+    RemplireFichierCfiffreDaffaire(Aff);
+    */
+    clearForm();
+}
+void MainWindow::LesCodeAutomatique()
+{
+    int nbM=0;
+    NbTotaleDesMateriele(&nbM);
+    char nba[100];
+    sprintf(nba,"ART00%d",nbM);
+    ui->CodeMateriel->setText(nba);
+    //code Automatique pour le commande
+    int nbCM=DeterminerNbCommande();
+    char nbC[100];
+    sprintf(nbC,"CM00%d",nbCM);
+    ui->EditCodeCommande->setText(nbC);
+    int nbCLI=0;
+    TousClient1(&nbCLI);
+    char CLI[20];
+    sprintf(CLI,"CLI0%d",nbCLI);
+    ui->NumeroEdit->setText(CLI);
+}
+
+void MainWindow::initialiserRadioBottonRecherche()
+{
+    ui->dateEditForAnnee->setVisible(false);
+    ui->dateEditPourCommencer->setVisible(false);
+    ui->labelZNtreDeuxDate->setVisible(false);
+    ui->dateEditOurLimiteDeRecherche->setVisible(false);
+    ui->dateEditPourLeMois->setVisible(false);
+
+
+
+}
+
+void MainWindow::initialiserMateriel()
+{
+    ui->SupprimerMateriel->setEnabled(false);
+    ui->EditerMateriel->setEnabled(false);
+}
+
+void MainWindow::initialiserClientsNouveau()
+{
+    ui->widgetForNouveauClients->setVisible(false);
+    ui->GROUPEBOXNOUVEAUCLIENTS->setVisible(false);
+}
+
+void MainWindow::clearForm()
+{
+    ui->NomEdit->clear();
+    ui->DesignationMateriel->clear();
+    ui->PrixReelMateriel->clear();
+    ui->StockCommande->clear();
+    ui->CodeMaterielCommande->clear();
+    ui->NumeroClientsCommande->clear();
+    ui->QuantiterComande->clear();
+}
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      // A PROPOS DU CLIENT//
+/*===============================================================================================================*/
+/*==============================================================================================================*/
+
+
+void MainWindow::AfficherCli()
+{
+    int n;
+    CLI*ncli=TousClient(&n);
+    int i=0;
+    ui->TableauClient->setRowCount(0);
+    ui->cbNumClient->clear();
+    for(i=0;i<n;i++){
+        ui->TableauClient->insertRow(i);
+        ui->TableauClient->setItem(i,0,new QTableWidgetItem(ncli[i].numCli));
+        ui->TableauClient->setItem(i,1,new QTableWidgetItem(QString::fromLatin1(ncli[i].nomCli).replace(":"," ")));
+        ui->cbNumClient->addItem(ncli[i].numCli);
+    }
+    initialiserCli();
+}
+
+//Pour la meilleur gestion
+
+void MainWindow::on_TableauClient_clicked()
+{
+    ui->EditerClient->setEnabled(true);
+    ui->SupprimerClients->setEnabled(true);
+    ui->widgetForNouveauClients->setVisible(false);
+    int SelectedRow=ui->TableauClient->currentRow();
+    CLI ncli;
+    strcpy(ncli.numCli,(ui->TableauClient->item(SelectedRow,0)->text().toLatin1()));
+    strcpy(ncli.nomCli,(ui->TableauClient->item(SelectedRow,1)->text().toLatin1()));
+    int n=0,i=0,Totale=0;
+    Achat*commande;
+    if(ui->radiorechercheTous->isChecked()){
+        Totale=getTousLesCommandeClients(ncli.numCli);
+        commande=RecherchedesListeDesAchatsEffectuersParClient(ncli.numCli,&n);
+    }
+    else if(ui->radiorechercheDansuneanne->isChecked()){
+        int Annee=ui->dateEditForAnnee->text().toInt();
+        Totale=getTousLesCommandeClientsDansUneAnnee(ncli.numCli,Annee);
+        commande=LireFichierCommandePourAvoirListeDesMaterielAcheterParUnClientsdansuneAnne(Annee,ncli.numCli,&n);
+    }
+    else if(ui->radioRechercheetntrdeuxdate->isChecked()){
+
+    }
+    else{
+        QString Date=ui->dateEditPourLeMois->text();
+        strcpy(commande[i].GetMoi,Date.toLatin1());
+        remplireFichierPourMois(commande);
+        commande=ChercherMoiDisponible();
+        getTousLesSommeTotaleCommandeClientsDansUnMois(ncli.numCli,commande[i].mois,commande[i].annee,&Totale);
+        commande=LireFichierCommandePourAvoirListeDesMaterielAcheterParUnClientsdansunmoi(commande[i].annee,commande[i].mois,ncli.numCli,&n);
+            printf("Totale=%d",Totale);
+    }
+    if(n==0){
+        QMessageBox::information(this,"Information","Acune vente disponible");
+    }
+    else{
+        ui->TABLEAULISTEDESMATERIELPARCLIENT->setRowCount(0);
+        for(i=0;i<=n;i++){
+             ui->TABLEAULISTEDESMATERIELPARCLIENT->insertRow(i);
+             ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,0,new QTableWidgetItem(commande[i].numMat));
+             ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,1,new QTableWidgetItem(QString::number(commande[i].Qte)));
+             if(ui->radiorechercheDansuneanne->isChecked() || ui->radioRecherchedansunmoi->isChecked() || ui->radioRechercheetntrdeuxdate->isChecked()){
+                ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,2,new QTableWidgetItem(QString::number(commande[i].jour)+"-"+QString::number(commande[i].mois)+"-"+QString::number(commande[i].annee)));
+             }
+             else {
+                 ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,2,new QTableWidgetItem(commande[i].date));
+             }
+            if(i==n){
+                ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,0,new QTableWidgetItem(""));
+                ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,1,new QTableWidgetItem("Totale"));
+                ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,2,new QTableWidgetItem(QString::number(Totale)));
+             }
+        }
+
+    }
+}
+
+//listage des materiel acheter par un clients dans plusieurs methode
+
+void MainWindow::AfficherLitesdesAchatsParClients()
+{
+    int n;
+    Achat*commande=TousLesAchatsEffectuersParUnClient(&n);
+    int i=0;
+    if(commande == NULL){
+        return;
+    }
+    else{
+        printf("%d\n",n);
+        ui->TABLEAULISTEDESMATERIELPARCLIENT->setRowCount(0);
+        for(i=0;i<n;i++){
+            ui->TABLEAULISTEDESMATERIELPARCLIENT->insertRow(i);
+            ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,0,new QTableWidgetItem(commande[i].numMat));
+            ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,1,new QTableWidgetItem(QString::number(commande[i].Qte)));
+            ui->TABLEAULISTEDESMATERIELPARCLIENT->setItem(i,2,new QTableWidgetItem(commande[i].date));
+        }
+    }
+}
+
+
+void MainWindow::on_AjouterClient_clicked()
+{
+    CLI ncli;
+    LesCodeAutomatique();
+    QString numero=ui->NumeroEdit->text();
+    QString nom=ui->NomEdit->text().replace(" ",":");
+    if(numero.isEmpty() || nom.isEmpty()){
+        QMessageBox::warning(this,"Champs vide","Veillez remplire le formulaire");
+        return;
+    }
+    strcpy(ncli.numCli,numero.toLatin1());
+    strcpy(ncli.nomCli,nom.toLatin1());
+    if(!ExistClient(ncli)){
+        AjoutClient(ncli);
+        ExisteClientsDansCommande1(ncli);
+        AfficherCli();
+        AfficherTousLesChiffresDAffaireDeChaqueClients();
+        QMessageBox::information(this,"Client enrengistrer","Clients ajouter avec succès");
+    }
+    else{
+        QMessageBox::warning(this,"Erreur","Clients exist deja");
+    }
+}
+
+
+void MainWindow::on_SupprimerClients_clicked()
+{
+    int SelectedRow=ui->TableauClient->currentRow();
+    if(SelectedRow<0){
+        QMessageBox::warning(this,"Erreur","Aucun ligne Selectioner");
+        return;
+    }
+    else{
+         int r=QMessageBox::question(this,"Confirmer suppression","Voulez-vous supprimer  ce clients"
+                                ,QMessageBox::Yes|QMessageBox::No);
+         if(r==QMessageBox::Yes){
+               CLI c;
+               strcpy(c.numCli,ui->TableauClient->item(SelectedRow,0)->text().toLatin1());
+               strcpy(c.nomCli,ui->TableauClient->item(SelectedRow,1)->text().toLatin1());
+               DeleteClient(c);
+               SupprimerClientsDansLesAffaireSiOnSupprimeUnClients(c);
+               AfficherTousLesChiffresDAffaireDeChaqueClients();
+               AfficherCli();
+               QMessageBox::information(this,"Information","Client supprimer avec succès");
+          }
+    }
+}
+
+
+void MainWindow::on_EditerClient_clicked()
+{
+    int SelectedRow=ui->TableauClient->currentRow();
+    if(SelectedRow<0){
+        QMessageBox::warning(this,"Erreur","Aucun ligne Selectioner");
+        return;
+    }
+    ui->NumeroEdit->setText(ui->TableauClient->item(SelectedRow,0)->text());
+    ui->NomEdit->setText(ui->TableauClient->item(SelectedRow,1)->text());
+    ui->NumeroEdit->setReadOnly(true);
+    ui->AjouterClient->setVisible(false);
+    ui->EnrengistrerClient->setVisible(true);
+    ui->widgetForNouveauClients->setVisible(true);
+}
+
+
+void MainWindow::on_EnrengistrerClient_clicked()
+{
+    CLI ncli;
+    QString numero=ui->NumeroEdit->text();
+    QString nom=ui->NomEdit->text().replace(" ",":");
+    if(nom.isEmpty()){
+        QMessageBox::warning(this,"Champs vide","Veillez remplire le formulaire");
+        return;
+    }
+    strcpy(ncli.numCli,numero.toLatin1());
+    strcpy(ncli.nomCli,nom.toLatin1());
+    EditClient(ncli);
+    //Modification en Chiffre d'Affaire
+    MiseAJoursDuClientsAffaire(ncli); 
+    AfficherTousLesChiffresDAffaireDeChaqueClients();
+    AfficherCli();
+    initialiserCli();
+    clearForm();
+    QMessageBox::information(this,"Information","Modification du clients avec succes");
+}
+
+
+//Recherche Par tableau,
+void MainWindow::rechercheCli()
+{ /*
+  QSystemTrayIcon*syico=new QSystemTrayIcon(this);
+  syico->show();
+  syico->showMessage("mety",tr("nnnnnnnn"));
+   */
+  QString txt=ui->txtCherchCli->text().toUpper();
+  if(!txt.isEmpty()){
+  for(int i=0;i<ui->TableauClient->rowCount();i++)
+  {
+      if((ui->TableauClient->item(i,0)->text().toUpper()).indexOf(txt)<0 && (ui->TableauClient->item(i,1)->text().toUpper()).indexOf(txt)<0)
+          ui->TableauClient->removeRow(i);
+  }
+  }
+  else AfficherCli();
+
+   /*
+    char txt[30];
+    strcpy(txt,ui->txtCherchCli->text().toLatin1().replace(" ",":"));
+    int n;
+    CLI*ncli=RechercheClient(txt,&n);
+    int i=0;
+    if(n==0) return;
+    ui->TableauClient->setRowCount(0);
+    for(i=0;i<n;i++){
+        ui->TableauClient->insertRow(i);
+        ui->TableauClient->setItem(i,0,new QTableWidgetItem(ncli[i].numCli));
+        ui->TableauClient->setItem(i,1,new QTableWidgetItem(QString::fromLatin1(ncli[i].nomCli).replace(":"," ")));
+    }
+    */
+}
+
+
+void MainWindow::on_AnnulerRechercheClients_clicked()
+{
+    AfficherCli();
+    ui->txtCherchCli->clear();
+}
+
+
+void MainWindow::on_txtCherchCli_textEdited()
+{
+    rechercheCli();
+}
+
+void MainWindow::on_ClientBoutton_clicked()
+{
+    ui->GestionCLient->setCurrentIndex(0);
+}
+
+void MainWindow::on_MaterielButton_clicked()
+{
+    ui->GestionCLient->setCurrentIndex(1);
+}
+
+void MainWindow::on_AchatsBouton_clicked()
+{
+    ui->GestionCLient->setCurrentIndex(2);
+    ui->EditCodeCommande->setReadOnly(true);
+    ui->dateEdit->setReadOnly(false);
+    LesCodeAutomatique();
+}
+
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      //L'ALGORITHME CONCERNANT CLIENTS SE TERMINE ICI//
+/*===============================================================================================================*/
+/*=============================================================================================================*/
+
+
+
+
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      // A PROPOS DE MATERIEL//
+/*===============================================================================================================*/
+/*==============================================================================================================*/
+
+
+
+void MainWindow::AfficherMateriel()
+{
+    int nb;
+    MAT*Materiel=NbTotaleDesMateriel(&nb);
+    int i;
+    ui->MaterieTab->setRowCount(0);
+    ui->cbNumMat->clear();
+    for(i=0;i<nb;i++)
+    {
+        int nbRows = ui->MaterieTab->rowCount();
+        ui->MaterieTab->insertRow(nbRows);
+        QTableWidgetItem *itemnumMat = new  QTableWidgetItem(Materiel[i].numMat);
+        QTableWidgetItem *itemDesign = new  QTableWidgetItem(QString::fromLatin1(Materiel[i].Design).replace(":", " "));
+        QTableWidgetItem *itemPuReal = new  QTableWidgetItem(QString::number(Materiel[i].PuReal));
+        QTableWidgetItem *itemStock  = new  QTableWidgetItem(QString::number(Materiel[i].Stock));
+        ui->MaterieTab->setItem(nbRows,0,itemnumMat);
+        ui->MaterieTab->setItem(nbRows,1,itemDesign);
+        ui->MaterieTab->setItem(nbRows,2,itemPuReal);
+        ui->MaterieTab->setItem(nbRows,3,itemStock);
+        ui->cbNumMat->addItem(Materiel[i].numMat);
+    }
+}
+
+
+
+void MainWindow::on_SupprimerMateriel_clicked()
+{
+    int nb=ui->MaterieTab->currentRow();
+    MAT Materiel;
+    if(nb<0){
+        QMessageBox::warning(this,"Erreur","Aucun ligne Selectioner");
+        return;
+    }
+    int r=QMessageBox::question(this,"Confirmer suppression","Voulez-vous supprimer  ce clients"
+                                ,QMessageBox::Yes|QMessageBox::No);
+    if(r==QMessageBox::Yes){
+        strcpy(Materiel.numMat,ui->MaterieTab->item(nb,0)->text().toLatin1());
+        strcpy(Materiel.Design,ui->MaterieTab->item(nb,1)->text().toLatin1());
+        Materiel.PuReal=ui->MaterieTab->item(nb,2)->text().toInt();
+        Materiel.Stock=ui->MaterieTab->item(nb,3)->text().toInt();
+        SupprimerMateriel(Materiel);
+    }
+    AfficherMateriel();
+}
+
+void MainWindow::on_EditerMateriel_clicked()
+{
+    ui->Enregistrer->setVisible(true);
+    ui->AjouterMateriel->setVisible(false);
+    ui->groupeBoxForinformation->setVisible(false);
+    ui->GROUPEBOXNOUVEAUCLIENTS->setVisible(true);
+    int nb=ui->MaterieTab->currentRow();
+    if(nb<0)
+    {
+        QMessageBox::warning(this,"Erreur","Aucune ligne Selectioner");
+        return;
+    }
+   else
+    {
+        ui->CodeMateriel->setText(ui->MaterieTab->item(nb,0)->text());
+        ui->DesignationMateriel->setText(ui->MaterieTab->item(nb,1)->text());
+        ui->PrixReelMateriel->setValue(ui->MaterieTab->item(nb,2)->text().toInt());
+        ui->StockCommande->setValue(ui->MaterieTab->item(nb,3)->text().toInt());
+    }
+}
+
+void MainWindow::on_AjouterMateriel_clicked()
+{
+    MAT Materiel1;
+    QString numMat=ui->CodeMateriel->text();
+    QString Design=ui->DesignationMateriel->text().replace(" ",":");
+    int PuReal=ui->PrixReelMateriel->text().toInt();
+    int Stock=ui->StockCommande->text().toInt();
+    if(numMat.isEmpty() || Design.isEmpty()){
+        QMessageBox::warning(this,"Champs vide","Veuillez remplir le formulaire");
+        return;
+    }
+    strcpy(Materiel1.numMat,numMat.toLatin1());
+    strcpy(Materiel1.Design,Design.toLatin1());
+    Materiel1.PuReal=PuReal;
+    Materiel1.Stock=Stock;
+    if(IsExistMateriel(Materiel1)){
+         QMessageBox::warning(this,"Information","Materiel deja saisi");
+         return;
+
+    }
+    else{
+        RemplireFichierMateriel(Materiel1);
+        AfficherMateriel();
+        clearForm();
+        LesCodeAutomatique();
+        QMessageBox::information(this,"information","Enregistrement effectuer");
+    }
+}
+
+void MainWindow::on_Enregistrer_clicked()
+{
+    QString numMat=ui->CodeMateriel->text();
+    QString Design=ui->DesignationMateriel->text().replace(" ",":");
+    int PuReal=ui->PrixReelMateriel->text().toInt();
+    int Stock=ui->StockCommande->text().toInt();
+    if(numMat.isEmpty() || Design.isEmpty())
+    {
+        QMessageBox::warning(this,"Champs vide","Veillez remplire le formulaire");
+        return;
+    }
+     MAT Materiel1;
+     strcpy(Materiel1.numMat,numMat.toLatin1());
+     strcpy(Materiel1.Design,Design.toLatin1());
+     Materiel1.PuReal=PuReal;
+     Materiel1.Stock=Stock;
+
+     EditerMateriel(Materiel1);
+     AfficherMateriel();
+     clearForm();
+     QMessageBox::information(this,"Information","Modification avec succès");
+     ui->GestionCLient->setCurrentIndex(1);
+}
+
+void MainWindow::RechercheMateriel()
+{
+    QString txt=ui->RechercheMateriele->text().toUpper();
+    int i=0;
+    if(!txt.isEmpty())
+    {
+        for(i=0;i<ui->MaterieTab->rowCount();i++)
+        {
+            if(ui->MaterieTab->item(i,0)->text().toUpper().indexOf(txt)<0 && (ui->MaterieTab->item(i,1)->text().toUpper().indexOf(txt)<0)
+                    && (ui->MaterieTab->item(i,2)->text().toUpper().indexOf(txt)<0) && (ui->MaterieTab->item(i,3)->text().toUpper().indexOf(txt)<0))
+            ui->MaterieTab->removeRow(i);
+        }
+    }
+    else AfficherMateriel();
+    /*
+    char txt[20];
+    strcpy(txt,ui->RechercheMateriele->text().toLatin1());
+    int n=0;
+    MAT*Materiel=RechercheMateriele(txt,&n);
+    if(n==0) return;
+    int i=0;
+    ui->MaterieTab->setRowCount(0);
+    for(i=0;i<n;i++ )
+    {
+        ui->MaterieTab->insertRow(i);
+        ui->MaterieTab->setItem(i,0,new QTableWidgetItem(Materiel[i].numMat));
+        ui->MaterieTab->setItem(i,1,new QTableWidgetItem(Materiel[i].Design));
+        ui->MaterieTab->setItem(i,2,new QTableWidgetItem(QString::number(Materiel[i].PuReal)));
+        ui->MaterieTab->setItem(i,3,new QTableWidgetItem(QString::number(Materiel[i].Stock)));
+    }
+*/
+}
+
+void MainWindow::on_RechercheMateriele_textEdited()
+{
+    RechercheMateriel();
+}
+
+void MainWindow::on_NouveauMateriel_clicked()
+{
+   LesCodeAutomatique();
+   ui->SupprimerMateriel->setEnabled(false);
+   ui->EditerMateriel->setEnabled(false);
+   ui->GROUPEBOXNOUVEAUCLIENTS->setVisible(true);
+   ui->groupeBoxForinformation->setVisible(false);
+   ui->CodeMateriel->setReadOnly(true);
+   ui->Enregistrer->setVisible(false);
+   ui->AjouterMateriel->setVisible(true);
+   clearForm();
+}
+
+void MainWindow::on_AnnulerechercheMateriel_clicked()
+{
+    AfficherMateriel();
+}
+
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      //L'ALGORITHME CONCERNAT MATERIEL SE TERMINE ICI//
+/*===============================================================================================================*/
+/*==============================================================================================================*/
+
+
+
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      //L'ALGORITHME CONCERNAT l"ACHAT//
+/*===============================================================================================================*/
+/*==============================================================================================================*/
+
+void MainWindow::RemplireTableauCommande()
+{
+    int nb,i;
+    Achat*commande=DeterminerNbCommande(&nb);
+    printf("%d",nb);
+    ui->TableauCommande->setRowCount(0);
+    for(i=0;i<nb;i++)
+    {
+        ui->TableauCommande->insertRow(i);
+         ui->TableauCommande->setItem(i,0,new QTableWidgetItem(commande[i].index));
+        ui->TableauCommande->setItem(i,1,new QTableWidgetItem(commande[i].numClient));
+        ui->TableauCommande->setItem(i,2,new QTableWidgetItem(commande[i].numMat));
+        ui->TableauCommande->setItem(i,3,new QTableWidgetItem(QString::number(commande[i].Qte)));
+        ui->TableauCommande->setItem(i,4,new QTableWidgetItem(commande[i].date));
+
+   }
+}
+
+
+void MainWindow::on_Effectuerlachat_clicked()
+{
+      Achat commande;
+      QString index=ui->EditCodeCommande->text().toLatin1();
+      QString numClient= ui->NumeroClientsCommande->text().toLatin1();
+      QString numMat = ui->CodeMaterielCommande->text().toLatin1();
+      int Qte = ui->QuantiterComande->text().toInt();
+      QString date= ui->dateEdit->text().toLatin1();
+
+      strcpy(commande.index,index.toLatin1());
+      strcpy(commande.numClient,numClient.toLatin1());
+      strcpy(commande.numMat,numMat.toLatin1());
+      commande.Qte=Qte;
+      strcpy(commande.date,date.toLatin1());
+
+      int Nouveau,Prix,vola,Stock,vola1,VolaVaovao;
+      Stock=IsExistMateriel2pourVoirLecontenueDeStock(commande);
+      Prix=IsExistMateriel2pourVoirLecontenueDePrixreel(commande);
+      vola=(Prix*Qte);
+      vola1=ExisteClientsDansCommande1(commande);
+      Nouveau=(Stock-Qte);
+      if(Qte>0){
+          if(Stock>=Qte &&  ExistClientCommande(commande) && IsExistMaterielCommande(commande))
+            {
+                   RemplireFichierCommande(commande);
+                   RemplireTableauCommande();
+                   FonctionDeVariationdesStock(Nouveau,commande);
+                   AfficherMateriel();
+                   VolaVaovao=(vola+vola1);
+                   ExistClientDansLeCommandePourFaireLeRetablisementDuPrixTotal(commande,VolaVaovao);
+                   AfficherTousLesChiffresDAffaireDeChaqueClients();
+                   clearForm();
+                   QMessageBox::information(this,"Confirmation","Achats enrengistrer avec succèe",QMessageBox::Yes);
+                   LesCodeAutomatique();
+             }
+          else
+             {
+                    QMessageBox::warning(this,"Erreur","Verifier que le Stock est disponible pour votre Quantiter si non verifier que le clients existes");
+                    return;
+             }
+             }
+      else{
+          QMessageBox::warning(this,"Erreur","Le Quantiter ne doivent pas être zero 0");
+        }
+
+      initialiserCli();
+}
+
+void MainWindow::on_SuprimerComande_clicked()
+{
+    int nb=ui->TableauCommande->currentRow();
+    Achat commande;
+    if(nb<0)
+    {
+        QMessageBox::warning(this,"Erreur","Aucune ligne selectionner");
+        return;
+    }
+
+    int r=QMessageBox::question(this,"Confirmation","Voulez vous supprimer definitivement ce commande",QMessageBox::Yes|QMessageBox::No);
+    if(r==QMessageBox::Yes)
+    {
+         strcpy(commande.index,(ui->TableauCommande->item(nb,0)->text().toLatin1()));
+         strcpy(commande.numClient,(ui->TableauCommande->item(nb,1)->text().toLatin1()));
+         strcpy(commande.numMat,(ui->TableauCommande->item(nb,2)->text().toLatin1()));
+         commande.Qte=ui->TableauCommande->item(nb,3)->text().toInt();
+         strcpy(commande.date,ui->TableauCommande->item(nb,4)->text().toLatin1());
+         int Qte=commande.Qte;
+         int Stock=IsExistMateriel2pourVoirLecontenueDeStock(commande);
+         int Nouveau=(Stock+Qte);
+         DeleteCommande(commande);
+         FonctionDeVariationdesStock(Nouveau,commande);
+         //Fonction pour etablir les chiffre d'affaire d'un clients
+         int Prix,vola,VolaVaovao,vola1;
+         Prix=IsExistMateriel2pourVoirLecontenueDePrixreel(commande);
+         vola=(Prix*Qte);
+         //il faut avoir le chiffre daffaire du clients selectionner
+         vola1=ValeurDuChiffredaffaireParClient(commande);
+         VolaVaovao=(vola1-vola);
+         ExistClientDansLeCommandePourFaireLeRetablisementDuPrixTotal(commande,VolaVaovao);
+         RemplireTableauCommande();
+         AfficherTousLesChiffresDAffaireDeChaqueClients();
+         AfficherMateriel();
+         QMessageBox::information(this,"Confirmation","Commande supprimer avec succèe");
+         LesCodeAutomatique();
+    }
+    initialiserCli();
+
+}
+
+void MainWindow::on_EditerCommande_clicked()
+{
+    Achat commande1;
+    CLI*ncli;
+    MAT*Materiel;
+    int i=0,n,nb1;
+    int nb=ui->TableauCommande->currentRow();
+    if(nb<0){
+       QMessageBox::warning(this,"Erreur","Aucune ligne selectionner");
+       return;
+    }
+       ui->EditCodeCommande->setText(ui->TableauCommande->item(nb,0)->text().toLatin1());
+       ui->NumeroClientsCommande->setText(ui->TableauCommande->item(nb,1)->text().toLatin1());
+       ui->CodeMaterielCommande->setText(ui->TableauCommande->item(nb,2)->text().toLatin1());
+       ui->QuantiterComande->setValue(ui->TableauCommande->item(nb,3)->text().toInt());
+       ui->dateEdit->setDate(QDate::fromString(ui->TableauCommande->item(nb,4)->text().toLatin1(),"dd-MM-yyyy"));
+       QString numClient=ui->TableauCommande->item(nb,1)->text().toLatin1();
+       QString numMat=ui->TableauCommande->item(nb,2)->text().toLatin1();
+       strcpy (commande1.numClient,numClient.toLatin1());
+       strcpy(commande1.numMat,numMat.toLatin1());
+       ncli= RechercheClient(commande1.numClient,&n);
+       Materiel=RechercheMateriele(commande1.numMat,&nb1);
+       int Stock=IsExistMateriel2pourVoirLecontenueDeStock(commande1);
+       ui->labelNomclientCommande->setText(ncli[i].nomCli);
+       ui->labeDesignationMaterielCommande->setText(Materiel[i].Design);
+       ui->labelStockdisponible->setText(QString::number(Stock));
+       if(Stock<=0){
+           ui->LabelDisponibiliterMateriel->setText("Non");
+         }
+       else{
+           ui->LabelDisponibiliterMateriel->setText("Oui");
+         }
+
+       ui->EnrengistrerCommandeEditer->setEnabled(true);
+       ui->EditerCommande->setEnabled(false);
+       ui->Effectuerlachat->setEnabled(false);
+}
+void MainWindow::on_EnrengistrerCommandeEditer_clicked()
+{
+    Achat commande;
+    Achat commande1;
+    QString index=ui->EditCodeCommande ->text().toLatin1();
+    QString numClient= ui->NumeroClientsCommande->text().toLatin1();
+    QString numMat = ui->CodeMaterielCommande->text().toLatin1();
+    int Qte1 = ui->QuantiterComande->text().toInt();
+    QString date =ui->dateEdit->text().toLatin1();
+    strcpy(commande.index,index.toLatin1());
+    strcpy(commande.numClient,numClient.toLatin1());
+    strcpy(commande.numMat,numMat.toLatin1());
+    commande.Qte=Qte1;
+    strcpy(commande.date,date.toLatin1());
+    int nb=ui->TableauCommande->currentRow();
+    strcpy(commande1.index,(ui->TableauCommande->item(nb,0)->text().toLatin1()));
+    strcpy(commande1.numClient,(ui->TableauCommande->item(nb,1)->text().toLatin1()));
+    strcpy(commande1.numMat,(ui->TableauCommande->item(nb,2)->text().toLatin1()));
+    commande1.Qte=ui->TableauCommande->item(nb,3)->text().toInt();
+    strcpy(commande1.date,ui->TableauCommande->item(nb,4)->text().toLatin1());
+    int Qte=commande1.Qte;
+    if(nb<0){
+        QMessageBox::warning(this,"Erreur","Aucune ligne selectionner");
+        return;
+    }
+    if(Qte1>0){
+         int Stock=IsExistMateriel2pourVoirLecontenueDeStock(commande1);
+         int m=Qte1-Qte;
+         int Nouveau=0;
+         //Encore une retablisement des achat lorsqu'on modifier la Quatiter
+         int Prix,vola,VolaVaovao,vola1;
+         Prix=IsExistMateriel2pourVoirLecontenueDePrixreel(commande1);
+         //il faut avoir le chiffre daffaire du clients selectionner
+         vola1=ValeurDuChiffredaffaireParClient(commande1);
+         if(Qte1<Qte && m<=Stock){
+             EditerCommande(commande);
+             RemplireTableauCommande();
+             Nouveau=(Stock-m);
+             FonctionDeVariationdesStock(Nouveau,commande1);
+             vola=((-m)*Prix);
+             VolaVaovao=(vola1-vola);
+             ExistClientDansLeCommandePourFaireLeRetablisementDuPrixTotal(commande1,VolaVaovao);
+             QMessageBox::information(this,"Confirmation","Mise à jours du commande  avec succès ARCRCCCDC");
+             clearForm();
+          }
+          else if(Qte1>Qte  && m<=Stock){
+             EditerCommande(commande);
+             Nouveau=(Stock-m);
+             FonctionDeVariationdesStock(Nouveau,commande1);
+             RemplireTableauCommande();
+             vola=(m*Prix);
+             VolaVaovao=(vola1+vola);
+             ExistClientDansLeCommandePourFaireLeRetablisementDuPrixTotal(commande1,VolaVaovao);
+             QMessageBox::information(this,"Confirmation","Mise à jours du commande avec succès");
+             clearForm();
+          }
+              else{
+                 QMessageBox::information(this,"Confirmation","Verifier Que le Stock est disponible ou vous ne faite pas aucune modification");
+              }
+        }
+
+     else{
+         QMessageBox::information(this,"Confirmation","Le quantiter ne peux pas être Zero ou negatif");
+     }  
+     ui->Effectuerlachat->setEnabled(true);
+     ui->SuprimerComande->setEnabled(true);
+     AfficherMateriel();
+     AfficherTousLesChiffresDAffaireDeChaqueClients();
+     initialiserCli();
+     LesCodeAutomatique();
+}
+
+void MainWindow::on_TableauCommande_clicked(const QModelIndex &index)
+{
+   ui->EditerCommande->setEnabled(true);
+   ui->SuprimerComande->setEnabled(true);
+}
+
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      //FIN DE L'ALGORITHME CONCERNAT l'ACHAT//
+/*===============================================================================================================*/
+/*==============================================================================================================*/
+
+
+
+
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      //ALGORITHME DE FACTURES//
+/*===============================================================================================================*/
+/*==============================================================================================================*/
+void MainWindow::on_factureBouton_clicked()
+{
+    ui->GestionCLient->setCurrentIndex(3);
+}
+
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      //ALGORITHME DE FACTURES//
+/*===============================================================================================================*/
+/*==============================================================================================================*/
+
+
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      //ALGORITHME DE CHIFFRE D'AFFAIRE//
+/*===============================================================================================================*/
+/*==============================================================================================================*/
+
+void MainWindow::on_ChiffredAffaire_clicked()
+{
+    ui->GestionCLient->setCurrentIndex(5);
+}
+
+
+void MainWindow::AfficherTousLesChiffresDAffaireDeChaqueClients()
+{
+    int n;
+    Affaire*Aff=TousClientdAffaire(&n);
+    int i=0;
+    if(n==0) return;
+    ui->TableauChiffresdAffaire->setRowCount(0);
+    for(i=0;i<n;i++)
+    {
+        ui->TableauChiffresdAffaire->insertRow(i);
+        ui->TableauChiffresdAffaire->setItem(i,0,new QTableWidgetItem(Aff[i].NUM));
+        ui->TableauChiffresdAffaire->setItem(i,1,new QTableWidgetItem(QString::fromLatin1(Aff[i].NOM).replace(":"," ")));
+        ui->TableauChiffresdAffaire->setItem(i,2,new QTableWidgetItem (QString::number(Aff[i].vola)));
+    }
+}
+
+
+
+/*=============================================================================================================*/
+/*===============================================================================================================*/
+                                      // FIN DE L'ALGORITHME DE CHIFFRE D'AFFAIRE//
+/*===============================================================================================================*/
+/*==============================================================================================================*/
+
+void MainWindow::on_cbNumClient_currentIndexChanged(int index)
+{
+    int n=0;
+    CLI*ncli=TousClient(&n);
+    if(n==0 || n<index) return;
+    ui->NumeroClientsCommande->setText(ncli[index].numCli);
+    ui->labelNomclientCommande->setText(QString::fromLatin1(ncli[index].nomCli).replace(":"," "));
+}
+
+void MainWindow::on_cbNumMat_currentIndexChanged(int index)
+{
+    int nb=0;
+    MAT*Materiel=NbTotaleDesMateriel(&nb);
+    if(nb==0 || nb < index) return;
+    ui->CodeMaterielCommande->setText(Materiel[index].numMat);
+    ui->labeDesignationMaterielCommande->setText(QString::fromLatin1(Materiel[index].Design).replace(":"," "));
+    ui->labelStockdisponible->setText(QString::number(Materiel[index].Stock));
+    if((Materiel[index].Stock)<=0){
+       ui->LabelDisponibiliterMateriel->setText("Non");
+    }
+    else{
+       ui->LabelDisponibiliterMateriel->setText("Oui");
+    }
+}
+
+void MainWindow::on_ButtonNouveauClients_clicked()
+{
+    ui->widgetForNouveauClients->setVisible(true);
+    LesCodeAutomatique();
+    clearForm();
+}
+
+void MainWindow::on_ButtonAnnuler_clicked()
+{
+    clearForm();
+}
+
+
+void MainWindow::on_MaterieTab_clicked(const QModelIndex &index)
+{
+    int nb=ui->MaterieTab->currentRow();
+    MAT Materiel;
+    ui->EditerMateriel->setEnabled(true);
+    ui->SupprimerMateriel->setEnabled(true);
+    ui->GROUPEBOXNOUVEAUCLIENTS->setVisible(false);
+    ui->groupeBoxForinformation->setVisible(true);
+    strcpy(Materiel.numMat,(ui->MaterieTab->item(nb,0)->text().toLatin1()));
+    Materiel.PuReal=(ui->MaterieTab->item(nb,2)->text().toInt());
+    ui->labelforCodeClients->setText(Materiel.numMat);
+    int Total=RecuperationdesNombreTotaleDeVenteDunMateriel(Materiel);
+    printf("Total=%d",Total);
+    if(Total==NULL){
+        ui->labelForTotaldesVante->setText("Aucune vente");
+    }
+    else{
+        ui->labelForTotaldesVante->setText(QString::number(Total));
+    }
+    int Prix=(Total*(Materiel.PuReal));
+    ui->labelForProxTotal->setText(QString::number(Prix));
+}
+
+void MainWindow::on_ButtonImprimer_clicked()
+{
+
+}
+
+void MainWindow::on_radioRechercheetntrdeuxdate_clicked()
+{
+    ui->dateEditPourCommencer->setVisible(true);
+    ui->labelZNtreDeuxDate->setVisible(true);
+    ui->dateEditOurLimiteDeRecherche->setVisible(true);
+    ui->dateEditForAnnee->setVisible(false);
+    ui->dateEditPourLeMois->setVisible(false);
+}
+
+void MainWindow::on_radioRecherchedansunmoi_clicked()
+{
+    ui->dateEditPourLeMois->setVisible(true);
+    ui->dateEditPourCommencer->setVisible(false);
+    ui->labelZNtreDeuxDate->setVisible(false);
+    ui->dateEditOurLimiteDeRecherche->setVisible(false);
+    ui->dateEditForAnnee->setVisible(false);
+}
+
+void MainWindow::on_radiorechercheDansuneanne_clicked()
+{
+    ui->dateEditForAnnee->setVisible(true);
+    ui->dateEditPourLeMois->setVisible(false);
+    ui->dateEditPourCommencer->setVisible(false);
+    ui->labelZNtreDeuxDate->setVisible(false);
+    ui->dateEditOurLimiteDeRecherche->setVisible(false);
+}
